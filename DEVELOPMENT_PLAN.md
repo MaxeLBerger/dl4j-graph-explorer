@@ -26,5 +26,5 @@
 ## Next Steps
 - [x] Install `jszip` for handling ZIP uploads.
 - [x] Update `dl4j-parser.ts` to handle ZIP files.
-- [x] Test with sample DL4J models.
+- [x] Test with sample DL4J models (Added "Load Sample" button).
 - [x] (Optional) Improve graph layout (hierarchical).

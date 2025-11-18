@@ -104,6 +104,9 @@ export async function parseDL4JModel(file: File): Promise<ImportResult> {
 
     const config = JSON.parse(configText);
     
+    // Debug logging to understand the structure
+    console.log('Parsed config:', config);
+
     const model: Model = {
       id: generateId(),
       name: file.name.replace(/\.(json|zip)$/i, ''),
@@ -117,19 +120,43 @@ export async function parseDL4JModel(file: File): Promise<ImportResult> {
     const weight_stats: WeightStat[] = [];
     
     const vertices = config.vertices || config.layers || [];
+    
+    let verticesArray: any[] = [];
+    if (Array.isArray(vertices)) {
+      verticesArray = vertices;
+    } else if (typeof vertices === 'object' && vertices !== null) {
+       // Handle case where vertices might be a map (though unusual for standard DL4J JSON export)
+       // or if the user provided a different structure.
+       // For now, let's assume if it's not an array, we can't process it easily without more info.
+       // But wait, maybe 'vertices' is a map in some versions?
+       // Let's try to convert values to array if it looks like a map
+       verticesArray = Object.values(vertices);
+    }
+
+    if (verticesArray.length === 0) {
+         // Fallback: check if 'confs' exists (MultiLayerConfiguration)
+         if (config.confs && Array.isArray(config.confs)) {
+             verticesArray = config.confs.map((c: any, index: number) => ({
+                 ...c,
+                 vertexName: c.layer?.layerName || `layer_${index}`,
+                 inputs: index > 0 ? [config.confs[index-1].layer?.layerName || `layer_${index-1}`] : []
+             }));
+         }
+    }
+
     const networkInputs = config.networkInputs || [];
     const networkOutputs = config.networkOutputs || [];
     
     const vertexMap = new Map<string, any>();
-    vertices.forEach((vertex: any) => {
-      const vertexName = vertex.vertexName || vertex.name || `layer_${vertices.indexOf(vertex)}`;
+    verticesArray.forEach((vertex: any) => {
+      const vertexName = vertex.vertexName || vertex.name || `layer_${verticesArray.indexOf(vertex)}`;
       vertexMap.set(vertexName, vertex);
     });
     
     const connectionMap = new Map<string, { inbound: Set<string>; outbound: Set<string> }>();
     
-    vertices.forEach((vertex: any) => {
-      const vertexName = vertex.vertexName || vertex.name || `layer_${vertices.indexOf(vertex)}`;
+    verticesArray.forEach((vertex: any) => {
+      const vertexName = vertex.vertexName || vertex.name || `layer_${verticesArray.indexOf(vertex)}`;
       
       if (!connectionMap.has(vertexName)) {
         connectionMap.set(vertexName, { inbound: new Set(), outbound: new Set() });
@@ -146,9 +173,9 @@ export async function parseDL4JModel(file: File): Promise<ImportResult> {
       });
     });
     
-    vertices.forEach((vertex: any) => {
+    verticesArray.forEach((vertex: any) => {
       try {
-        const vertexName = vertex.vertexName || vertex.name || `layer_${vertices.indexOf(vertex)}`;
+        const vertexName = vertex.vertexName || vertex.name || `layer_${verticesArray.indexOf(vertex)}`;
         const layerConfig = vertex.layerConf?.layer || vertex.layer || {};
         
         const { layer_type, input_shape, output_shape, num_parameters } = parseLayerConfig(layerConfig);

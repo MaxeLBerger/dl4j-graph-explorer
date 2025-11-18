@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Upload, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { parseDL4JModel } from '@/lib/dl4j-parser';
+import { createSampleModelFile } from '@/lib/sample-model';
 import type { Model, LayerNode, WeightStat, ImportResult } from '@/types/model';
 import { toast } from 'sonner';
 
@@ -31,9 +32,9 @@ export function ImportModelDialog({ open, onOpenChange, onImported }: ImportMode
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   
-  const [models, setModels] = useKV<Model[]>('dl4j-models', []);
-  const [layers, setLayers] = useKV<LayerNode[]>('dl4j-layers', []);
-  const [weightStats, setWeightStats] = useKV<WeightStat[]>('dl4j-weight-stats', []);
+  const [models, setModels] = useLocalStorage<Model[]>('dl4j-models', []);
+  const [layers, setLayers] = useLocalStorage<LayerNode[]>('dl4j-layers', []);
+  const [weightStats, setWeightStats] = useLocalStorage<WeightStat[]>('dl4j-weight-stats', []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -42,6 +43,18 @@ export function ImportModelDialog({ open, onOpenChange, onImported }: ImportMode
       if (!name) {
         setName(selectedFile.name.replace(/\.(json|zip)$/i, ''));
       }
+    }
+  };
+
+  const handleLoadSample = async () => {
+    try {
+      const sampleFile = await createSampleModelFile();
+      setFile(sampleFile);
+      setName('Sample DL4J Model');
+      setDescription('A sample model generated for testing purposes.');
+    } catch (error) {
+      toast.error('Failed to generate sample model');
+      console.error(error);
     }
   };
 
@@ -148,13 +161,18 @@ export function ImportModelDialog({ open, onOpenChange, onImported }: ImportMode
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={handleClose} disabled={importing}>
-                Cancel
+            <div className="flex justify-between pt-4">
+              <Button variant="ghost" onClick={handleLoadSample} disabled={importing} className="text-muted-foreground">
+                Load Sample
               </Button>
-              <Button onClick={handleImport} disabled={importing || !file || !name.trim()}>
-                {importing ? 'Importing...' : 'Import Model'}
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleClose} disabled={importing}>
+                  Cancel
+                </Button>
+                <Button onClick={handleImport} disabled={importing || !file || !name.trim()}>
+                  {importing ? 'Importing...' : 'Import Model'}
+                </Button>
+              </div>
             </div>
           </div>
         ) : (

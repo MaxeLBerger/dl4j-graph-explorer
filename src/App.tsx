@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useKV } from '@github/spark/hooks';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Toaster } from '@/components/ui/sonner';
 import { AppLayout } from '@/components/AppLayout';
 import { ModelsList } from '@/components/ModelsList';
@@ -13,9 +13,9 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('models');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   
-  const [models] = useKV<Model[]>('dl4j-models', []);
-  const [layers] = useKV<LayerNode[]>('dl4j-layers', []);
-  const [weightStats] = useKV<WeightStat[]>('dl4j-weight-stats', []);
+  const [models] = useLocalStorage<Model[]>('dl4j-models', []);
+  const [layers] = useLocalStorage<LayerNode[]>('dl4j-layers', []);
+  const [weightStats] = useLocalStorage<WeightStat[]>('dl4j-weight-stats', []);
   
   const [modelsData, setModelsData] = useState<Model[]>([]);
   const [layersData, setLayersData] = useState<LayerNode[]>([]);
