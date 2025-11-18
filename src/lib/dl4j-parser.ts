@@ -1,4 +1,5 @@
 import type { Model, LayerNode, WeightStat, ImportResult, HistogramBin } from '@/types/model';
+import JSZip from 'jszip';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -82,8 +83,26 @@ export async function parseDL4JModel(file: File): Promise<ImportResult> {
   const skipped_items: string[] = [];
   
   try {
-    const text = await file.text();
-    const config = JSON.parse(text);
+    let configText = '';
+    
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      const zip = new JSZip();
+      const zipContent = await zip.loadAsync(file);
+      
+      // Try to find configuration.json or any json file
+      const configFile = zipContent.file('configuration.json') || 
+                         Object.values(zipContent.files).find(f => f.name.toLowerCase().endsWith('.json') && !f.dir);
+      
+      if (!configFile) {
+        throw new Error('No configuration.json or other JSON file found in the ZIP archive');
+      }
+      
+      configText = await configFile.async('string');
+    } else {
+      configText = await file.text();
+    }
+
+    const config = JSON.parse(configText);
     
     const model: Model = {
       id: generateId(),

@@ -50,13 +50,35 @@ export function GraphView({ layers, weightStats, selectedLayerId, onLayerSelect 
         g.attr('transform', event.transform);
       });
 
-    svg.call(zoom);
+    svg.call(zoom)
+       .call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8));
 
     const nodes: D3Node[] = layers.map(layer => ({
       id: layer.id,
       name: layer.name,
       layer_type: layer.layer_type,
     }));
+
+    // Calculate levels for hierarchical layout
+    const levels = new Map<string, number>();
+    layers.forEach(l => levels.set(l.name, 0));
+    
+    // Relax levels to find depth
+    for (let i = 0; i < layers.length; i++) {
+      let changed = false;
+      layers.forEach(layer => {
+        if (layer.inbound_nodes.length > 0) {
+          const maxParentLevel = Math.max(...layer.inbound_nodes.map(p => levels.get(p) || 0));
+          if (levels.get(layer.name) !== maxParentLevel + 1) {
+            levels.set(layer.name, maxParentLevel + 1);
+            changed = true;
+          }
+        }
+      });
+      if (!changed) break;
+    }
+    
+    const maxLevel = Math.max(...Array.from(levels.values()), 0);
 
     const links: D3Link[] = [];
     layers.forEach(layer => {
@@ -73,9 +95,13 @@ export function GraphView({ layers, weightStats, selectedLayerId, onLayerSelect 
 
     const simulation = d3.forceSimulation<D3Node>(nodes)
       .force('link', d3.forceLink<D3Node, D3Link>(links).id(d => d.id).distance(150))
-      .force('charge', d3.forceManyBody().strength(-500))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(50));
+      .force('charge', d3.forceManyBody().strength(-1000))
+      .force('collide', d3.forceCollide().radius(80))
+      .force('x', d3.forceX<D3Node>(d => {
+        const level = levels.get(d.name) || 0;
+        return (level - maxLevel / 2) * 300;
+      }).strength(2))
+      .force('y', d3.forceY(0).strength(0.1));
 
     const link = g.append('g')
       .selectAll('line')
@@ -187,7 +213,6 @@ export function GraphView({ layers, weightStats, selectedLayerId, onLayerSelect 
       const newWidth = container.clientWidth;
       const newHeight = container.clientHeight;
       svg.attr('width', newWidth).attr('height', newHeight);
-      simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2));
       simulation.alpha(0.3).restart();
     };
 
