@@ -2,6 +2,7 @@
 
 ## Current Status
 - **Tech Stack**: React, Vite, Tailwind CSS, Radix UI, D3.js.
+- **Infrastructure**: Fully local (Spark dependencies removed).
 - **Core Features**:
   - Model Import (JSON config only).
   - Models List.
