@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Info, Eye, ChartBar, Upload } from '@phosphor-icons/react';
 

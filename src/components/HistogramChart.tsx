@@ -1,3 +1,4 @@
+import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import type { HistogramBin } from '@/types/model';
 

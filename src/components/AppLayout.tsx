@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import { Graph, Info } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 

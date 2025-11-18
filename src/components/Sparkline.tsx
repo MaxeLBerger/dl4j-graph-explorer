@@ -1,3 +1,4 @@
+import React from 'react';
 import type { HistogramBin } from '@/types/model';
 
 interface SparklineProps {
