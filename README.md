@@ -1,23 +1,49 @@
-# ✨ Welcome to Your Spark Template!
-You've just launched your brand-new Spark Template Codespace — everything’s fired up and ready for you to explore, build, and create with Spark!
+# DL4J Graph Explorer
 
-This template is your blank canvas. It comes with a minimal setup to help you get started quickly with Spark development.
+DL4J Graph Explorer is a read-only visualization tool for DeepLearning4J (DL4J) computational graph models. It lets you:
 
-🚀 What's Inside?
-- A clean, minimal Spark environment
-- Pre-configured for local development
-- Ready to scale with your ideas
-  
-🧠 What Can You Do?
+* Import DL4J JSON or ZIP model exports
+* Inspect layer topology (inbound/outbound connections)
+* View per-layer parameter counts
+* Explore simulated weight statistics (histograms, mean, std dev) – real weight parsing coming soon
+* Navigate between a graph view and a tabular weight overview
 
-Right now, this is just a starting point — the perfect place to begin building and testing your Spark applications.
+## Tech Stack
 
-🧹 Just Exploring?
-No problem! If you were just checking things out and don’t need to keep this code:
+* React + Vite
+* TypeScript
+* Tailwind CSS + Radix UI primitives
+* D3.js for graph layout
 
-- Simply delete your Spark.
-- Everything will be cleaned up — no traces left behind.
+## Key Principles
 
-📄 License For Spark Template Resources 
+* Local-first: no external backend, all data persisted in `localStorage`
+* Read-only: no training, mutation, or inference
+* Fast import feedback with an import summary
+* Accessible, keyboard-friendly UI components
 
-The Spark Template files and resources from GitHub are licensed under the terms of the MIT license, Copyright GitHub, Inc.
+## Planned Enhancements
+
+* Parse real weight arrays from DL4J ZIP (`coefficients.bin`) if feasible in-browser
+* Export lightweight JSON report of model structure and stats
+* Dark mode toggle
+* Graph layout presets (hierarchical, force-directed, compact)
+
+## Development
+
+Install dependencies and start the dev server:
+
+```bash
+npm install
+npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+## License
+
+MIT
