@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload } from '@phosphor-icons/react';
+import { Upload, Trash } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -12,18 +12,32 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { Model } from '@/types/model';
+import { Badge as UIBadge } from '@/components/ui/badge';
+import { 
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction
+} from '@/components/ui/alert-dialog';
 import { ImportModelDialog } from './ImportModelDialog';
 
 interface ModelsListProps {
   models: Model[];
   onModelSelect: (modelId: string) => void;
   onModelImported: () => void;
+  onModelDelete: (modelId: string) => void;
 }
 
-export function ModelsList({ models, onModelSelect, onModelImported }: ModelsListProps) {
+export function ModelsList({ models, onModelSelect, onModelImported, onModelDelete }: ModelsListProps) {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [sortField, setSortField] = useState<keyof Model>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [deleteTarget, setDeleteTarget] = useState<Model | null>(null);
 
   const handleSort = (field: keyof Model) => {
     if (sortField === field) {
@@ -160,6 +174,7 @@ export function ModelsList({ models, onModelSelect, onModelImported }: ModelsLis
                     {sortField === 'total_parameters' && <span className="text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
                   </div>
                 </TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -167,7 +182,11 @@ export function ModelsList({ models, onModelSelect, onModelImported }: ModelsLis
                 <TableRow
                   key={model.id}
                   className="cursor-pointer"
-                  onClick={() => onModelSelect(model.id)}
+                  onClick={(e) => {
+                    // Prevent row navigation when clicking delete button
+                    if ((e.target as HTMLElement).closest('[data-delete]')) return;
+                    onModelSelect(model.id);
+                  }}
                 >
                   <TableCell className="font-medium">
                     <div>
@@ -184,7 +203,41 @@ export function ModelsList({ models, onModelSelect, onModelImported }: ModelsLis
                     <Badge variant="secondary">{formatNumber(model.num_layers)}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Badge variant="outline" className="font-mono">{formatNumber(model.total_parameters)}</Badge>
+                    <div className="flex items-center justify-end gap-2">
+                      <Badge variant="outline" className="font-mono">{formatNumber(model.total_parameters)}</Badge>
+                      {model.parameter_mismatch && (
+                        <UIBadge variant="destructive" className="text-[10px]">Mismatch</UIBadge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <AlertDialog open={deleteTarget?.id === model.id} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" data-delete onClick={() => setDeleteTarget(model)}>
+                          <Trash size={16} className="text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Model</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will remove the model and all associated layers and weight statistics. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => {
+                              onModelDelete(model.id);
+                              setDeleteTarget(null);
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}

@@ -13,9 +13,9 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('models');
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   
-  const [models] = useLocalStorage<Model[]>('dl4j-models', []);
-  const [layers] = useLocalStorage<LayerNode[]>('dl4j-layers', []);
-  const [weightStats] = useLocalStorage<WeightStat[]>('dl4j-weight-stats', []);
+  const [models, setModels] = useLocalStorage<Model[]>('dl4j-models', []);
+  const [layers, setLayers] = useLocalStorage<LayerNode[]>('dl4j-layers', []);
+  const [weightStats, setWeightStats] = useLocalStorage<WeightStat[]>('dl4j-weight-stats', []);
   
   const [modelsData, setModelsData] = useState<Model[]>([]);
   const [layersData, setLayersData] = useState<LayerNode[]>([]);
@@ -28,6 +28,26 @@ function App() {
   useEffect(() => {
     if (layers) setLayersData(layers);
   }, [layers]);
+  // Migration: recalculate total_parameters if a model has zero but raw config available
+  useEffect(() => {
+    if (!models || !layers) return;
+    let updated = false;
+    const newModels = models.map(m => {
+      if (m.total_parameters === 0 && m.raw_config_json) {
+        const modelLayers = layers.filter(l => l.model_id === m.id);
+        const newTotal = modelLayers.reduce((acc, l) => acc + (l.num_parameters || 0), 0);
+        if (newTotal > 0) {
+          updated = true;
+          return { ...m, total_parameters: newTotal };
+        }
+      }
+      return m;
+    });
+    if (updated) {
+      setModels(newModels);
+      setModelsData(newModels);
+    }
+  }, [models, layers, setModels]);
 
   useEffect(() => {
     if (weightStats) setWeightStatsData(weightStats);
@@ -49,6 +69,37 @@ function App() {
   };
 
   const handleModelImported = () => {
+    // Force migration recalculation post-import
+    setTimeout(() => {
+      const ms = (models || []).map(m => {
+        const modelLayers = (layers || []).filter(l => l.model_id === m.id);
+        const tp = modelLayers.reduce((acc, l) => acc + l.num_parameters, 0);
+        return { ...m, total_parameters: tp };
+      });
+      setModels(ms);
+      setModelsData(ms);
+    }, 50);
+  };
+
+  const handleModelDelete = (modelId: string) => {
+    // Remove model
+    const newModels = (models || []).filter(m => m.id !== modelId);
+    // Remove layers tied to model
+    const newLayers = (layers || []).filter(l => l.model_id !== modelId);
+    // Remove weight stats tied to removed layers
+    const removedLayerIds = new Set((layers || []).filter(l => l.model_id === modelId).map(l => l.id));
+    const newWeightStats = (weightStats || []).filter(ws => !removedLayerIds.has(ws.layer_node_id));
+
+    setModels(newModels);
+    setLayers(newLayers);
+    setWeightStats(newWeightStats);
+    setModelsData(newModels);
+    setLayersData(newLayers);
+    setWeightStatsData(newWeightStats);
+
+    if (selectedModelId === modelId) {
+      handleBackToModels();
+    }
   };
 
   const selectedModel = modelsData.find(m => m.id === selectedModelId);
@@ -68,6 +119,7 @@ function App() {
             models={modelsData}
             onModelSelect={handleModelSelect}
             onModelImported={handleModelImported}
+            onModelDelete={handleModelDelete}
           />
         )}
         

@@ -32,3 +32,10 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# Backend build artifacts
+backend/target/
+backend/maven/
+
+# VS Code tasks
+.vscode/tasks.json

@@ -215,6 +215,49 @@ export function ImportModelDialog({ open, onOpenChange, onImported }: ImportMode
                 </Card>
               </div>
 
+              {(importResult.summary.binary_parameters != null) && (
+                <Card className="p-4 border-dashed">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs text-muted-foreground mb-1">Binary Weights Count (coefficients.bin)</div>
+                      <div className="text-lg font-semibold font-mono">
+                        {importResult.summary.binary_parameters.toLocaleString()}
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Expected: {importResult.summary.expected_parameters?.toLocaleString()} • Ratio: {importResult.summary.parameter_match_ratio?.toFixed(3)}
+                      </div>
+                    </div>
+                    {importResult.summary.parameter_mismatch ? (
+                      <Badge variant="destructive">Mismatch</Badge>
+                    ) : (
+                      <Badge variant="secondary">Matched</Badge>
+                    )}
+                  </div>
+                  {importResult.summary.parameter_mismatch && (
+                    <div className="mt-2 text-xs text-destructive">
+                      Difference: {(importResult.summary.binary_parameters - (importResult.summary.expected_parameters || 0)).toLocaleString()} floats
+                    </div>
+                  )}
+                </Card>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Badge variant={importResult.summary.has_binary_weights ? 'secondary' : 'outline'}>
+                  Weights file: {importResult.summary.has_binary_weights ? 'present' : 'missing'}
+                </Badge>
+                <Badge variant={importResult.summary.has_updater_state ? 'secondary' : 'outline'}>
+                  Updater state: {importResult.summary.has_updater_state ? 'present' : 'missing'}
+                </Badge>
+                {!importResult.summary.has_binary_weights && (
+                  <span className="text-xs text-muted-foreground">
+                    Parameter counts set to 0 (no coefficients.bin)
+                  </span>
+                )}
+                {importResult.summary.parameter_mismatch && (
+                  <Badge variant="destructive">Parameter Mismatch</Badge>
+                )}
+              </div>
+
               {importResult.summary.skipped_items.length > 0 && (
                 <Card className="p-4 bg-muted">
                   <div className="flex items-start gap-3">

@@ -1,73 +1,67 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
-// Custom event for local storage changes
-const STORAGE_EVENT_NAME = 'local-storage-change';
+const LOCAL_EVENT = 'local-storage-sync';
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
-  // Get from local storage then
-  // parse stored json or if none return initialValue
-  const readValue = useCallback((): T => {
-    if (typeof window === 'undefined') {
-      return initialValue;
-    }
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    if (typeof window === 'undefined') return initialValue;
     try {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
+    } catch {
       return initialValue;
     }
-  }, [initialValue, key]);
+  });
 
-  // State to store our value
-  // Pass initial state function to useState so logic is only executed once
-  const [storedValue, setStoredValue] = useState<T>(readValue);
-
-  // Return a wrapped version of useState's setter function that ...
-  // ... persists the new value to localStorage.
   const setValue = (value: T | ((val: T) => T)) => {
     try {
-      // Allow value to be a function so we have same API as useState
-      const valueToStore =
-        value instanceof Function ? value(storedValue) : value;
-      
-      // Save state
-      setStoredValue(valueToStore);
-      
-      // Save to local storage
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      // Avoid unnecessary state churn
+      setStoredValue(prev => {
+        const prevJson = JSON.stringify(prev);
+        const nextJson = JSON.stringify(valueToStore);
+        return prevJson === nextJson ? prev : valueToStore;
+      });
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
-        
-        // Dispatch a custom event so other hooks in the same window update
-        window.dispatchEvent(new CustomEvent(STORAGE_EVENT_NAME, { detail: { key } }));
+        // Notify same-window listeners
+        window.dispatchEvent(new CustomEvent(LOCAL_EVENT, { detail: { key, value: valueToStore } }));
       }
-    } catch (error) {
-      console.warn(`Error setting localStorage key "${key}":`, error);
+    } catch (e) {
+      console.warn('Failed to set localStorage key', key, e);
     }
   };
 
   useEffect(() => {
-    setStoredValue(readValue());
-  }, [readValue]);
-
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent | CustomEvent) => {
-      // Check if the event is for our key
-      if ((e as StorageEvent).key === key || (e as CustomEvent).detail?.key === key) {
-        setStoredValue(readValue());
+    // Sync if value changed in another tab
+    const handler = (e: StorageEvent) => {
+      if (e.key === key) {
+        try {
+          const newVal = e.newValue ? JSON.parse(e.newValue) : initialValue;
+          setStoredValue(prev => {
+            const prevJson = JSON.stringify(prev);
+            const nextJson = JSON.stringify(newVal);
+            return prevJson === nextJson ? prev : newVal;
+          });
+        } catch {}
       }
     };
-
-    // Listen for changes from other tabs/windows
-    window.addEventListener('storage', handleStorageChange);
-    // Listen for changes from the same window (our custom event)
-    window.addEventListener(STORAGE_EVENT_NAME, handleStorageChange as EventListener);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener(STORAGE_EVENT_NAME, handleStorageChange as EventListener);
+    // Same-window sync via custom event
+    const localHandler = (e: Event) => {
+      const ce = e as CustomEvent;
+      if (ce.detail?.key === key) {
+        const newVal = ce.detail.value as T;
+        setStoredValue(prev => {
+          const prevJson = JSON.stringify(prev);
+          const nextJson = JSON.stringify(newVal);
+          return prevJson === nextJson ? prev : newVal;
+        });
+      }
     };
-  }, [key, readValue]);
+    window.addEventListener('storage', handler);
+    window.addEventListener(LOCAL_EVENT, localHandler as EventListener);
+    return () => window.removeEventListener('storage', handler);
+  }, [key, initialValue]);
 
   return [storedValue, setValue];
 }

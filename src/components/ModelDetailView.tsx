@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Model, LayerNode, WeightStat } from '@/types/model';
 import { GraphView } from './GraphView';
 import { WeightOverview } from './WeightOverview';
+import { InferencePanel } from './InferencePanel';
 
 interface ModelDetailViewProps {
   model: Model;
@@ -66,6 +67,7 @@ export function ModelDetailView({ model, layers, weightStats, onBack }: ModelDet
             <TabsList>
               <TabsTrigger value="graph">Graph View</TabsTrigger>
               <TabsTrigger value="weights">Weight Overview</TabsTrigger>
+              <TabsTrigger value="inference">Inference</TabsTrigger>
             </TabsList>
           </div>
           
@@ -84,6 +86,10 @@ export function ModelDetailView({ model, layers, weightStats, onBack }: ModelDet
               weightStats={weightStats}
               onLayerSelect={setSelectedLayerId}
             />
+          </TabsContent>
+
+          <TabsContent value="inference" className="flex-1 mt-0 overflow-auto">
+            <InferencePanel model={model} layers={layers} />
           </TabsContent>
         </Tabs>
       </div>
